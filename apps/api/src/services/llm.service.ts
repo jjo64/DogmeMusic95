@@ -18,6 +18,19 @@ export const MusicNodeSchema = z.object({
   label: z.string().describe('Nombre legible para visualización, ej. "Led Zeppelin" o "Heavy Metal"'),
   type: z.enum(['artist', 'genre', 'movement', 'theme']).describe('Tipo de nodo'),
   description: z.string().describe('Descripción breve de su estilo, rol o importancia histórica (máx 20 palabras)'),
+  
+  // Metadatos adicionales para nodos de tipo 'artist'
+  era: z.string().optional().describe('Año o período activo, ej. "1976–1980" (obligatorio para artistas)'),
+  origin: z.string().optional().describe('Ciudad y país de origen, ej. "Salford, UK" (obligatorio para artistas)'),
+  genres: z.array(z.string()).optional().describe('Lista de géneros musicales asociados, ej. ["POST-PUNK"] (obligatorio para artistas)'),
+  influenceScore: z.number().min(0).max(100).optional().describe('Centralidad/relevancia en la escena de 0 a 100 (obligatorio para artistas)'),
+  
+  // Características sónicas para la búsqueda acústica (obligatorio para artistas, entre 0 y 100)
+  darkness: z.number().min(0).max(100).optional().describe('Nivel de oscuridad/gravedad tonal de 0 a 100'),
+  energy: z.number().min(0).max(100).optional().describe('Nivel de energía e intensidad musical de 0 a 100'),
+  experimental: z.number().min(0).max(100).optional().describe('Nivel de experimentalismo y estructura de 0 a 100'),
+  acousticness: z.number().min(0).max(100).optional().describe('Nivel de organicidad/instrumentación acústica vs electrónica de 0 a 100'),
+  danceability: z.number().min(0).max(100).optional().describe('Ritmo y bailabilidad de 0 a 100'),
 });
 
 export const MusicLinkSchema = z.object({
@@ -59,7 +72,14 @@ export async function generateArtistGraph(artistName: string): Promise<MusicGrap
   4. Su género musical primario y movimientos musicales asociados (ej. "Rock Psicodélico", "Grunge", "Seattle Scene").
   5. Temáticas líricas o estéticas clave que los conecten con otros artistas.
   
-  Asegúrate de generar entre 8 y 15 nodos y suficientes relaciones (links) para que el grafo sea visualmente rico e interesante en D3.js.
+  Para CADA nodo de tipo 'artist' en el grafo, DEBES proporcionar obligatoriamente los siguientes campos:
+  - era: Periodo activo (ej. "1976–1980" o "1989–PRESENT").
+  - origin: Ciudad/País de origen en mayúsculas (ej. "LONDON, UK").
+  - genres: Array de géneros principales (ej. ["POST-PUNK", "NEW WAVE"]).
+  - influenceScore: Puntuación de relevancia de 0 a 100.
+  - darkness, energy, experimental, acousticness, danceability: Valores numéricos estimados de 0 a 100 que definan su firma acústica y estilo de sonido.
+  
+  Asegúrate de generar entre 8 y 15 nodos en total y suficientes relaciones (links) para que el grafo sea visualmente rico e interesante en D3.js.
   `;
 
   try {
@@ -94,7 +114,20 @@ export async function generateArtistGraph(artistName: string): Promise<MusicGrap
                     id: { type: 'string' },
                     label: { type: 'string' },
                     type: { type: 'string', enum: ['artist', 'genre', 'movement', 'theme'] },
-                    description: { type: 'string' }
+                    description: { type: 'string' },
+                    
+                    // Campos adicionales para artistas
+                    era: { type: 'string' },
+                    origin: { type: 'string' },
+                    genres: { type: 'array', items: { type: 'string' } },
+                    influenceScore: { type: 'integer' },
+                    
+                    // Campos acústicos
+                    darkness: { type: 'number' },
+                    energy: { type: 'number' },
+                    experimental: { type: 'number' },
+                    acousticness: { type: 'number' },
+                    danceability: { type: 'number' }
                   },
                   required: ['id', 'label', 'type', 'description']
                 }
@@ -147,19 +180,38 @@ export async function generateArtistGraph(artistName: string): Promise<MusicGrap
 
 /**
  * Retorna datos simulados en caso de no tener una API Key configurada.
- * Esto asegura que el proyecto funcione de inmediato para demostración y testeo.
  */
 function getMockGraph(artistName: string): MusicGraph {
   const rootId = artistName.toLowerCase().replace(/[^a-z0-9]/g, '-');
   return {
     nodes: [
-      { id: rootId, label: artistName, type: 'artist', description: `Artista consultado: ${artistName}` },
-      { id: 'influence-1', label: 'The Beatles', type: 'artist', description: 'Banda británica legendaria que revolucionó el pop/rock mundial.' },
-      { id: 'influence-2', label: 'David Bowie', type: 'artist', description: 'Camaleón del rock, pionero del glam rock y la experimentación.' },
+      {
+        id: rootId, label: artistName, type: 'artist', description: `Artista consultado: ${artistName}`,
+        era: '1985–PRESENT', origin: 'UNKNOWN CITY', genres: ['ALTERNATIVE'], influenceScore: 85,
+        darkness: 65, energy: 55, experimental: 70, acousticness: 25, danceability: 35
+      },
+      {
+        id: 'influence-1', label: 'The Beatles', type: 'artist', description: 'Banda británica legendaria que revolucionó el pop/rock mundial.',
+        era: '1960–1970', origin: 'LIVERPOOL, UK', genres: ['POP ROCK', 'PSYCHEDELIC ROCK'], influenceScore: 99,
+        darkness: 30, energy: 75, experimental: 85, acousticness: 40, danceability: 60
+      },
+      {
+        id: 'influence-2', label: 'David Bowie', type: 'artist', description: 'Camaleón del rock, pionero del glam rock y la experimentación.',
+        era: '1967–2016', origin: 'LONDON, UK', genres: ['ART ROCK', 'GLAM ROCK'], influenceScore: 98,
+        darkness: 60, energy: 70, experimental: 90, acousticness: 30, danceability: 55
+      },
       { id: 'genre-rock', label: 'Classic Rock', type: 'genre', description: 'Género musical dominante de los años 60 y 70 con guitarras eléctricas.' },
       { id: 'movement-psychedelia', label: 'Psicodelia', type: 'movement', description: 'Movimiento artístico inspirado en experiencias psicodélicas y sonido etéreo.' },
-      { id: 'influenced-1', label: 'Radiohead', type: 'artist', description: 'Referente del rock alternativo y experimental de los 90s en adelante.' },
-      { id: 'influenced-2', label: 'Tame Impala', type: 'artist', description: 'Proyecto de Neo-Psicodelia liderado por Kevin Parker.' },
+      {
+        id: 'influenced-1', label: 'Radiohead', type: 'artist', description: 'Referente del rock alternativo y experimental de los 90s en adelante.',
+        era: '1985–PRESENT', origin: 'OXFORD, UK', genres: ['ART ROCK', 'ALTERNATIVE ROCK'], influenceScore: 98,
+        darkness: 80, energy: 50, experimental: 95, acousticness: 35, danceability: 30
+      },
+      {
+        id: 'influenced-2', label: 'Tame Impala', type: 'artist', description: 'Proyecto de Neo-Psicodelia liderado por Kevin Parker.',
+        era: '2007–PRESENT', origin: 'PERTH, AU', genres: ['PSYCHEDELIC POP', 'INDIE ROCK'], influenceScore: 90,
+        darkness: 40, energy: 65, experimental: 80, acousticness: 20, danceability: 68
+      },
     ],
     links: [
       { source: 'influence-1', target: rootId, type: 'influence', description: 'Inspiró las armonías vocales y composición melódica.' },
