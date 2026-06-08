@@ -8,11 +8,62 @@ generator client {
 }
 
 model Artist {
+  id             String             @id @default(uuid())
+  name           String             @unique
+  era            String?            // Ej: "1976–1980" (Timeline)
+  origin         String?            // Ej: "Salford, UK"
+  genres         String[]           // Ej: ["Post-Punk"]
+  description    String?            // Breve crítica del artista
+  influenceScore Int                @default(80)
+  
+  // Características sónicas (0 - 100)
+  darkness       Float              @default(50)
+  energy         Float              @default(50)
+  experimental   Float              @default(50)
+  acousticness   Float              @default(50)
+  danceability   Float              @default(50)
+
+  graphs         Graph[]
+  historyEntries ExplorationHistory[]
+  listMemberships ListMember[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+}
+
+model ExplorationHistory {
   id        String   @id @default(uuid())
-  name      String   @unique
-  graphs    Graph[]
+  artistId  String
+  artist    Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+}
+
+model UserList {
+  id        String       @id @default(uuid())
+  name      String
+  artists   ListMember[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+model ListMember {
+  id       String   @id @default(uuid())
+  listId   String
+  list     UserList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  artistId String
+  artist   Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+
+  @@unique([listId, artistId])
+}
+
+model Collection {
+  id          String   @id @default(uuid())
+  name        String
+  subtitle    String?
+  description String
+  coverColor  String   @default("#8B1E1E")
+  artistIds   String[]
+  tags        String[]
+  createdAt   DateTime @default(now())
 }
 
 model Graph {
