@@ -1,0 +1,40 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Artist {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  graphs    Graph[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Graph {
+  id        String   @id @default(uuid())
+  artistId  String
+  artist    Artist   @relation(fields: [artistId], references: [id], onDelete: Cascade)
+  data      Json     // Almacena el grafo completo de influencias (nodos y conexiones)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model GenerationJob {
+  id         String    @id @default(uuid())
+  artistName String    @unique // Evita generación paralela duplicada para el mismo artista
+  status     JobStatus @default(PENDING)
+  error      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+enum JobStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
