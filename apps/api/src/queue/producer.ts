@@ -7,25 +7,29 @@ const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://guest:guest@localhost:5
 export const QUEUE_NAME = 'graph_generation_queue';
 
 let channel: amqp.Channel | null = null;
-let connection: amqp.Connection | null = null;
+let connection: amqp.ChannelModel | null = null;
 
 export async function connectQueue(): Promise<amqp.Channel> {
   if (channel) return channel;
 
   try {
-    connection = await amqp.connect(RABBITMQ_URL);
-    channel = await connection.createChannel();
-    await channel.assertQueue(QUEUE_NAME, { durable: true });
+    const conn = await amqp.connect(RABBITMQ_URL);
+    connection = conn;
+    
+    const ch = await conn.createChannel();
+    channel = ch;
+    
+    await ch.assertQueue(QUEUE_NAME, { durable: true });
     console.log('Successfully connected to RabbitMQ and queue asserted');
     
     // Escuchar cierre de la conexión
-    connection.on('close', () => {
+    conn.on('close', () => {
       console.warn('RabbitMQ connection closed. Reconnecting...');
       channel = null;
       connection = null;
     });
 
-    return channel;
+    return ch;
   } catch (error) {
     console.error('Failed to connect to RabbitMQ:', error);
     throw error;
